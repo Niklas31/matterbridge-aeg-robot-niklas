@@ -12,7 +12,7 @@ import {
 } from 'matterbridge/matter/behaviors';
 import { AnsiLogger } from 'matterbridge/logger';
 import { ChangeToModeError, RvcOperationalStateError, SelectAreaError } from './error-rx9.js';
-import { assertIsDefined, assertIsInstanceOf, formatList } from './utils.js';
+import { formatList } from './utils.js';
 import { isDeepStrictEqual } from 'util';
 import { logError } from './log-error.js';
 
@@ -154,33 +154,36 @@ export class RvcOperationalStateServerRX9 extends RvcOperationalStateBehavior {
 
     static {
         const schema = RvcOperationalStateServerRX9.schema;
-        assertIsInstanceOf(schema, ClusterModel);
+        if (!(schema instanceof ClusterModel)) return;
+        try {
+            // Add manufacturer-specific OperationalState values
+            extendEnum(schema, 'OperationalStateEnum', [
+                FieldElement({
+                    name:           'ManualSteering',
+                    id:             RvcOperationalStateRX9.ManualSteering,
+                    conformance:    'O',
+                    description:    'The device is being steered manually'
+                }),
+                FieldElement({
+                    name:           'FirmwareUpgrade',
+                    id:             RvcOperationalStateRX9.FirmwareUpgrade,
+                    conformance:    'O',
+                    description:    'The device firmware is being upgraded'
+                })
+            ]);
 
-        // Add manufacturer-specific OperationalState values
-        extendEnum(schema, 'OperationalStateEnum', [
-            FieldElement({
-                name:           'ManualSteering',
-                id:             RvcOperationalStateRX9.ManualSteering,
-                conformance:    'O',
-                description:    'The device is being steered manually'
-            }),
-            FieldElement({
-                name:           'FirmwareUpgrade',
-                id:             RvcOperationalStateRX9.FirmwareUpgrade,
-                conformance:    'O',
-                description:    'The device firmware is being upgraded'
-            })
-        ]);
-
-        // Add manufacturer-specific ErrorState values
-        extendEnum(schema, 'ErrorStateEnum', [
-            FieldElement({
-                name:           'OtherError',
-                id:             VENDOR_ERROR_RX9,
-                conformance:    'O',
-                description:    'The device has an error that is not covered by the Matter-defined error states'
-            })
-        ]);
+            // Add manufacturer-specific ErrorState values
+            extendEnum(schema, 'ErrorStateEnum', [
+                FieldElement({
+                    name:           'OtherError',
+                    id:             VENDOR_ERROR_RX9,
+                    conformance:    'O',
+                    description:    'The device has an error that is not covered by the Matter-defined error states'
+                })
+            ]);
+        } catch {
+            // Older/newer Matter.js schemas may not allow extension.
+        }
     }
 
     // Common command handler
@@ -262,7 +265,7 @@ export class ServiceAreaServerRX9 extends ServiceAreaBehavior {
 // Extend a Matter.js schema enum with new values
 function extendEnum(schema: ClusterModel, name: string, values: FieldElement[]): void {
     const element = schema.datatypes.find(e => e.name === name);
-    assertIsDefined(element);
+    if (!element) return;
     for (const value of values) {
         // Re-use any existing definition of the same value
         if (element.children.some(e => e.id === value.id)) continue;

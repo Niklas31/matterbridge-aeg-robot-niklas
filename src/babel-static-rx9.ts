@@ -37,7 +37,8 @@ const FAMILY_MODEL_PNC: Record<string, Record<string, string[]>> = {
         'PI92-4ANM':  ['900277469'],
         'PI92-6DGM':  ['900277470'],
         'PI92-6SGM':  ['900277494'],
-        'PI92-6STN':  ['900277491']
+        'PI92-6STN':  ['900277491'],
+        'PI92-4M2':   ['900921353']
     },
     // AEG models
     'RX9.1': {

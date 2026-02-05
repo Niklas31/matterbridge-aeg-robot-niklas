@@ -50,8 +50,8 @@ const STATUS_MAP: Record<RX9RobotStatus, ExtractTypes<StatusFieldEntries>> = {
     [RX9RobotStatus.Sleeping]:                 ['Idle',     false,      'Docked'],
     [RX9RobotStatus.Error]:                    ['Idle',     false,      'Error'],
     [RX9RobotStatus.Pitstop]:                  ['Cleaning', false,      'Charging'],
-    [RX9RobotStatus.ManualSteering]:           ['Idle',     false,      'ManualSteering'],
-    [RX9RobotStatus.FirmwareUpgrade]:          ['Idle',     false,      'FirmwareUpgrade']
+    [RX9RobotStatus.ManualSteering]:           ['Idle',     false,      'Paused'],
+    [RX9RobotStatus.FirmwareUpgrade]:          ['Idle',     false,      'Stopped']
 };
 function mapStatus(status: RX9RobotStatus): ExtractFields<StatusFieldEntries> {
     const [runMode, isSpotClean, operationalState] = STATUS_MAP[status];

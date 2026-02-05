@@ -335,12 +335,6 @@ export class EndpointRX9 extends MatterbridgeEndpoint {
                 operationalStateId:     RvcOperationalStateRX9.Charging
             }, {
                 operationalStateId:     RvcOperationalStateRX9.Docked
-            }, {
-                operationalStateId:     RvcOperationalStateRX9.ManualSteering,
-                operationalStateLabel: 'Manual Steering'
-            }, {
-                operationalStateId:     RvcOperationalStateRX9.FirmwareUpgrade,
-                operationalStateLabel: 'Firmware Upgrade'
             }],
             // Variable attributes (with dummy defaults)
             operationalState:       RvcOperationalStateRX9.Stopped,
