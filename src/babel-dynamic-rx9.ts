@@ -58,6 +58,39 @@ function mapStatus(status: RX9RobotStatus): ExtractFields<StatusFieldEntries> {
     return { runMode, isSpotClean, operationalState };
 }
 
+type BatteryMap = [
+    number,
+    keyof typeof PowerSource.PowerSourceStatus,
+    keyof typeof PowerSource.BatChargeLevel,
+    keyof typeof PowerSource.BatChargeState
+];
+const BATTERY_MAP: Record<RX9BatteryStatus, BatteryMap> = {
+    //                                     %    Status         ChargeLevel ChargeState
+    [RX9BatteryStatus.Dead]:            [  0,   'Unavailable', 'Critical', 'IsNotCharging'],
+    [RX9BatteryStatus.CriticalLow]:     [ 20,   'Active',      'Critical', 'IsNotCharging'],
+    [RX9BatteryStatus.Low]:             [ 40,   'Active',      'Warning',  'IsNotCharging'],
+    [RX9BatteryStatus.Medium]:          [ 60,   'Active',      'Ok',       'IsNotCharging'],
+    [RX9BatteryStatus.High]:            [ 80,   'Active',      'Ok',       'IsNotCharging'],
+    [RX9BatteryStatus.FullyCharged]:    [100,   'Active',      'Ok',       'IsAtFullCharge']
+};
+
+const POWER_MAP: Record<RX92PowerMode, [keyof typeof RvcCleanModeRX9, keyof typeof RvcCleanModeRX9]> = {
+    [RX92PowerMode.Quiet]:      ['Quiet', 'QuietSpot'],
+    [RX92PowerMode.Smart]:      ['Smart', 'SmartSpot'],
+    [RX92PowerMode.Power]:      ['Power', 'PowerSpot']
+};
+
+const STATUS_CURRENT = new Set<RX9CleaningSessionStatus>(['approaching', 'started']);
+
+const PROGRESS_MAP: Record<RX9CleaningSessionStatus, ServiceArea.OperationalStatus> = {
+    idle:           ServiceArea.OperationalStatus.Pending,
+    approaching:    ServiceArea.OperationalStatus.Pending,
+    started:        ServiceArea.OperationalStatus.Operating,
+    finished:       ServiceArea.OperationalStatus.Completed,
+    aborted:        ServiceArea.OperationalStatus.Skipped,
+    terminated:     ServiceArea.OperationalStatus.Skipped
+};
+
 // Translation of dynamic appliance information to Matter attributes
 export const BABEL_DYNAMIC_RX9 = {
 
@@ -78,22 +111,7 @@ export const BABEL_DYNAMIC_RX9 = {
         batChargeLevel:         PowerSource.BatChargeLevel;
         batChargeState:         PowerSource.BatChargeState;
     } => {
-        type BatteryMap = [
-            number,
-            keyof typeof PowerSource.PowerSourceStatus,
-            keyof typeof PowerSource.BatChargeLevel,
-            keyof typeof PowerSource.BatChargeState
-        ];
-        const batteryMap: Record<RX9BatteryStatus, BatteryMap> = {
-            //                                     %    Status         ChargeLevel ChargeState
-            [RX9BatteryStatus.Dead]:            [  0,   'Unavailable', 'Critical', 'IsNotCharging'],
-            [RX9BatteryStatus.CriticalLow]:     [ 20,   'Active',      'Critical', 'IsNotCharging'],
-            [RX9BatteryStatus.Low]:             [ 40,   'Active',      'Warning',  'IsNotCharging'],
-            [RX9BatteryStatus.Medium]:          [ 60,   'Active',      'Ok',       'IsNotCharging'],
-            [RX9BatteryStatus.High]:            [ 80,   'Active',      'Ok',       'IsNotCharging'],
-            [RX9BatteryStatus.FullyCharged]:    [100,   'Active',      'Ok',       'IsAtFullCharge']
-        };
-        const [batPercentRemaining, statusEnum, batChargeLevelEnum, batChargeStateEnum] = batteryMap[batteryStatus];
+        const [batPercentRemaining, statusEnum, batChargeLevelEnum, batChargeStateEnum] = BATTERY_MAP[batteryStatus];
         return {
             status:                 PowerSource.PowerSourceStatus[statusEnum],
             batPercentRemaining:    batPercentRemaining * 2,
@@ -112,12 +130,7 @@ export const BABEL_DYNAMIC_RX9 = {
     cleanMode: ({ fauxStatus, powerMode, ecoMode }: DynamicStateRX9): RvcCleanModeRX9 => {
         const { isSpotClean } = mapStatus(fauxStatus);
         powerMode ??= ecoMode === true ? RX92PowerMode.Quiet : RX92PowerMode.Power;
-        const PowerMap: Record<RX92PowerMode, [keyof typeof RvcCleanModeRX9, keyof typeof RvcCleanModeRX9]> = {
-            [RX92PowerMode.Quiet]:      ['Quiet', 'QuietSpot'],
-            [RX92PowerMode.Smart]:      ['Smart', 'SmartSpot'],
-            [RX92PowerMode.Power]:      ['Power', 'PowerSpot']
-        };
-        const cleanMode = PowerMap[powerMode][isSpotClean ? 1 : 0];
+        const cleanMode = POWER_MAP[powerMode][isSpotClean ? 1 : 0];
         return RvcCleanModeRX9[cleanMode];
     },
 
@@ -194,23 +207,12 @@ export const BABEL_DYNAMIC_RX9 = {
         progress:       ServiceArea.Progress[]
      } => {
         // Treat zone being approached or cleaned as the current location
-        const StatusCurrent: RX9CleaningSessionStatus[] = ['approaching', 'started'];
-        const currentZone = zoneStatus.find(({ status }) => StatusCurrent.includes(status));
+        const currentZone = zoneStatus.find(({ status }) => STATUS_CURRENT.has(status));
         const currentArea = currentZone ? areas.areaIdForZoneId(currentZone.id) : null;
-
-        // Map the progress status of each supported zone
-        const ProgressMap: Record<RX9CleaningSessionStatus, ServiceArea.OperationalStatus> = {
-            idle:           ServiceArea.OperationalStatus.Pending,
-            approaching:    ServiceArea.OperationalStatus.Pending,
-            started:        ServiceArea.OperationalStatus.Operating,
-            finished:       ServiceArea.OperationalStatus.Completed,
-            aborted:        ServiceArea.OperationalStatus.Skipped,
-            terminated:     ServiceArea.OperationalStatus.Skipped
-        };
         const progress: ServiceArea.Progress[] = [];
         for (const { id, status } of zoneStatus) {
             const areaId = areas.areaIdForZoneId(id);
-            if (areaId !== null) progress.push({ areaId, status: ProgressMap[status] });
+            if (areaId !== null) progress.push({ areaId, status: PROGRESS_MAP[status] });
         }
         return { currentArea, progress };
     }

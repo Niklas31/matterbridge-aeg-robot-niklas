@@ -30,16 +30,25 @@ export class RvcOperationalStateError extends Error {
 
     // Convert an arbitrary error (or nullish for success) to an ErrorStateStruct
     static toStruct(err?: unknown, defaultId?: number): RvcOperationalState.ErrorStateStruct {
-        return (err instanceof RvcOperationalStateError) ? {
-            errorStateId:       err.id,
-            errorStateLabel:    err.label  ?.substring(0, 64) ?? '',
-            errorStateDetails:  err.details?.substring(0, 64) ?? ''
-        } : {
-            errorStateId:       this.toId(err, defaultId),
-            errorStateLabel:    err instanceof Error ? err.message.substring(0, 64)
-                                : err ? 'Unknown error' : '',
-            errorStateDetails:  ''
-        };
+        const errorStateId = err instanceof RvcOperationalStateError
+            ? err.id
+            : this.toId(err, defaultId);
+
+        const errorStateLabel = err instanceof RvcOperationalStateError
+            ? err.label?.substring(0, 64) ?? ''
+            : err instanceof Error
+                ? err.message.substring(0, 64)
+                : err ? 'Unknown error' : '';
+
+        const errorStateDetails = err instanceof RvcOperationalStateError
+            ? err.details?.substring(0, 64) ?? ''
+            : '';
+
+        const allowVendorText = errorStateId >= 0x80 && errorStateId <= 0xbf;
+        const result: RvcOperationalState.ErrorStateStruct = { errorStateId };
+        if (allowVendorText && errorStateLabel) result.errorStateLabel = errorStateLabel;
+        if (allowVendorText && errorStateDetails) result.errorStateDetails = errorStateDetails;
+        return result;
     }
 
     // Convert an arbitrary error (or nullish for success) to an OperationalCommandResponse

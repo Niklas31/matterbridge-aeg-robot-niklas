@@ -150,10 +150,12 @@ export class DeviceRX9 extends EndpointRX9 {
                              + ` ${AV}${PowerSource.PowerSourceStatus[status]}${RR} (${AV}${status}${RR}),`
                              + ` ${AV}${PowerSource.BatChargeState[batChargeState]}${RR} (${AV}${batChargeState}${RR})`;
             this.log.info(logMessage);
-            await this.updateAttribute(clusterId, 'status',              status,              this.log);
-            await this.updateAttribute(clusterId, 'batPercentRemaining', batPercentRemaining, this.log);
-            await this.updateAttribute(clusterId, 'batChargeLevel',      batChargeLevel,      this.log);
-            await this.updateAttribute(clusterId, 'batChargeState',      batChargeState,      this.log);
+            await Promise.all([
+                this.updateAttribute(clusterId, 'status',              status,              this.log),
+                this.updateAttribute(clusterId, 'batPercentRemaining', batPercentRemaining, this.log),
+                this.updateAttribute(clusterId, 'batChargeLevel',      batChargeLevel,      this.log),
+                this.updateAttribute(clusterId, 'batChargeState',      batChargeState,      this.log)
+            ]);
         });
     }
 
@@ -181,8 +183,10 @@ export class DeviceRX9 extends EndpointRX9 {
             const clusterId = RvcOperationalState.Cluster.id;
             this.log.info(`${AN}RVC Operational State${RR}: ${AV}${RvcOperationalStateRX9[operationalState]}${RR}`
                         + ` (${AV}${operationalState}${RR})`);
-            await this.updateAttribute(clusterId, 'operationalState', operationalState, this.log);
-            await this.updateAttribute(clusterId, 'operationalError', operationalError, this.log);
+            await Promise.all([
+                this.updateAttribute(clusterId, 'operationalState', operationalState, this.log),
+                this.updateAttribute(clusterId, 'operationalError', operationalError, this.log)
+            ]);
 
             // Trigger OperationCompletion event when changing from active to idle
             const { errorStateId, errorStateLabel, errorStateDetails } = operationalError;
@@ -236,8 +240,10 @@ export class DeviceRX9 extends EndpointRX9 {
             const progressStatus = progress.map(({ areaId, status }) =>
                 `${AV}${areaName(areaId)}${RR}: ${AV}${ServiceArea.OperationalStatus[status]}${RR} (${AV}${status}${RR})`);
             this.log.info(`${AN}Service Area${RR}: ${AV}${areaName(currentArea)}${RR} [${progressStatus.join(', ')}]`);
-            await this.updateAttribute(clusterId, 'currentArea', currentArea, this.log);
-            await this.updateAttribute(clusterId, 'progress',    progress,    this.log);
+            await Promise.all([
+                this.updateAttribute(clusterId, 'currentArea', currentArea, this.log),
+                this.updateAttribute(clusterId, 'progress',    progress,    this.log)
+            ]);
         });
     }
 }
