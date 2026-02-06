@@ -3,22 +3,20 @@
 </p>
 <div align=center>
 
-# matterbridge-aeg-robot
+# matterbridge-aeg-robot-niklas
 
-[![npm](https://img.shields.io/npm/v/matterbridge-aeg-robot?label=Latest)](https://www.npmjs.com/package/matterbridge-aeg-robot)
-[![npm](https://img.shields.io/npm/dt/matterbridge-aeg-robot?logo=npm&label=Downloads)](https://www.npmjs.com/package/matterbridge-aeg-robot)
-[![npm](https://img.shields.io/npm/dw/matterbridge-aeg-robot?label=)](https://www.npmjs.com/package/matterbridge-aeg-robot)
-[![Build and Lint](https://github.com/thoukydides/matterbridge-aeg-robot/actions/workflows/build.yml/badge.svg)](https://github.com/thoukydides/matterbridge-aeg-robot/actions/workflows/build.yml)
-[![Test](https://github.com/thoukydides/matterbridge-aeg-robot/actions/workflows/test.yml/badge.svg)](https://github.com/thoukydides/matterbridge-aeg-robot/actions/workflows/test.yml)
+[![npm](https://img.shields.io/npm/v/matterbridge-aeg-robot-niklas?label=Latest)](https://www.npmjs.com/package/matterbridge-aeg-robot-niklas)
+[![npm](https://img.shields.io/npm/dt/matterbridge-aeg-robot-niklas?logo=npm&label=Downloads)](https://www.npmjs.com/package/matterbridge-aeg-robot-niklas)
+[![npm](https://img.shields.io/npm/dw/matterbridge-aeg-robot-niklas?label=)](https://www.npmjs.com/package/matterbridge-aeg-robot-niklas)
+[![Build and Lint](https://github.com/Niklas31/matterbridge-aeg-robot/actions/workflows/build.yml/badge.svg)](https://github.com/Niklas31/matterbridge-aeg-robot/actions/workflows/build.yml)
+[![Test](https://github.com/Niklas31/matterbridge-aeg-robot/actions/workflows/test.yml/badge.svg)](https://github.com/Niklas31/matterbridge-aeg-robot/actions/workflows/test.yml)
 
 A [Matterbridge](https://github.com/Luligu/matterbridge) plugin that connects [AEG RX 9](https://www.aeg.co.uk/wellbeing/discover/rx9) / [Electrolux Pure i9](https://www.electroluxgroup.com/en/electrolux-launches-pure-i9-robotic-vacuum-in-the-united-states-24513/) robot vacuums  
 to the [Matter](https://csa-iot.org/all-solutions/matter/) smart home ecosystem.
 
+Maintained fork of [thoukydides/matterbridge-aeg-robot](https://github.com/thoukydides/matterbridge-aeg-robot), published on npm as `matterbridge-aeg-robot-niklas`.
+
 </div>
-
-## ⚠️ Deprecation Notice
-
-This plugin has been archived and is no longer maintained.
 
 ## Installation
 
@@ -34,9 +32,9 @@ This plugin has been archived and is no longer maintained.
 ### Step 3 - Matterbridge Plugin Installation
 
 1. Open the Matterbridge web interface, e.g. at http://localhost:8283/.
-1. Under *Install plugins* type `matterbridge-aeg-robot` in the *Plugin name or plugin path* search box, then click *Install ⬇️*.
+1. Under *Install plugins* type `matterbridge-aeg-robot-niklas` in the *Plugin name or plugin path* search box, then click *Install ⬇️*.
 1. Click *🔄 Restart Matterbridge* to apply the change.
-1. Open the **matterbridge-aeg-robot** *⚙️ Plugin config*.
+1. Open the **matterbridge-aeg-robot-niklas** *⚙️ Plugin config*.
 1. Set the *API Key*, *Access Token*, and *Refresh Token* to the values obtained from the [Electrolux Group Developer Portal Dashboard](https://developer.electrolux.one/dashboard).
 1. Click <kbd>CONFIRM</kbd> to save the configuration and restart Matterbridge again.
 1. Pair each robot vacuum device individually with the Matter controller using its QR code.
@@ -48,18 +46,18 @@ This plugin has been archived and is no longer maintained.
 1. Stop Matterbridge:  
    `sudo systemctl stop matterbridge`
 1. Install the plugin:  
-   `npm install -g matterbridge-aeg-robot`
+   `npm install -g matterbridge-aeg-robot-niklas`
 1. Register it with Matterbridge:  
-   `sudo -u matterbridge matterbridge -add matterbridge-aeg-robot`
+   `sudo -u matterbridge matterbridge -add matterbridge-aeg-robot-niklas`
 1. Restart Matterbridge:  
    `sudo systemctl start matterbridge`
 
-#### Example `matterbridge-aeg-robot.config.json`
+#### Example `matterbridge-aeg-robot-niklas.config.json`
 ```JSON
 {
-    "name":                     "matterbridge-aeg-robot",
+    "name":                     "matterbridge-aeg-robot-niklas",
     "type":                     "DynamicPlatform",
-    "version":                  "1.0.0",
+    "version":                  "1.3.9",
     "apiKey":                   "<API Key>",
     "accessToken":              "<Authorization Access Token>",
     "refreshToken":             "<Authorization Refresh Token>",
@@ -79,7 +77,7 @@ This plugin has been archived and is no longer maintained.
 
 ### Advanced Configuration
 
-You can include additional settings in `matterbridge-aeg-robot.config.json` to customise the behaviour or enable special debug features:
+You can include additional settings in `matterbridge-aeg-robot-niklas.config.json` to customise the behaviour or enable special debug features:
 
 | Key                     | Default            | Description
 | ----------------------- | ------------------ | ---
@@ -260,11 +258,11 @@ All notable changes to this project are documented in [`CHANGELOG.md`](CHANGELOG
 
 ## Reporting Issues
           
-If you have discovered an issue or have an idea for how to improve this project, please [open a new issue](https://github.com/thoukydides/matterbridge-aeg-robot/issues/new/choose) using the appropriate issue template.
+If you have discovered an issue or have an idea for how to improve this project, please [open a new issue](https://github.com/Niklas31/matterbridge-aeg-robot/issues/new/choose) using the appropriate issue template.
 
 ### Pull Requests
 
-As explained in [`CONTRIBUTING.md`](https://github.com/thoukydides/.github/blob/master/CONTRIBUTING.md), this project does **NOT** accept pull requests. Any PRs submitted will be closed without discussion.
+Pull requests are welcome on this fork. Please open an issue first so we can align on the change.
 
 ## Legal
 

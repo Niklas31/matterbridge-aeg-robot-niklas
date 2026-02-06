@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v1.3.9] - 2026-02-06
+### Changed
+* Set package author to Niklas and credit original author as contributor.
+* Remove deprecation notice from README.
+
 ## [v1.3.8] - 2026-02-06
 ### Fixed
 * Provide a schema file matching the npm package name so Matterbridge UI shows full config fields.
@@ -186,7 +191,8 @@ All notable changes to this project will be documented in this file.
 
 Copyright © 2025 Alexander Thoukydides
 
-[Unreleased]:       https://github.com/Niklas31/matterbridge-aeg-robot/compare/v1.3.8...HEAD
+[Unreleased]:       https://github.com/Niklas31/matterbridge-aeg-robot/compare/v1.3.9...HEAD
+[v1.3.9]:           https://github.com/Niklas31/matterbridge-aeg-robot/compare/v1.3.8...v1.3.9
 [v1.3.8]:           https://github.com/Niklas31/matterbridge-aeg-robot/compare/v1.3.7...v1.3.8
 [v1.3.7]:           https://github.com/Niklas31/matterbridge-aeg-robot/compare/v1.3.6...v1.3.7
 [v1.3.6]:           https://github.com/Niklas31/matterbridge-aeg-robot/compare/v1.3.5...v1.3.6

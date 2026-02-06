@@ -2,7 +2,7 @@
     "name": "matterbridge-aeg-robot-niklas",
     "description": "A Matterbridge plugin that connects AEG RX 9 / Electrolux Pure i9 robot vacuums to the Matter smart home ecosystem.",
     "displayName": "AEG Robot",
-    "version": "1.3.8",
+    "version": "1.3.9",
     "license": "ISC",
     "keywords": [
         "Matterbridge",
@@ -20,9 +20,15 @@
         "cleaner"
     ],
     "author": {
-        "name": "Alexander Thoukydides",
-        "url": "https://www.thouky.co.uk/"
+        "name": "Niklas",
+        "url": "https://github.com/Niklas31"
     },
+    "contributors": [
+        {
+            "name": "Alexander Thoukydides",
+            "url": "https://www.thouky.co.uk/"
+        }
+    ],
     "funding": [
         {
             "type": "github",
