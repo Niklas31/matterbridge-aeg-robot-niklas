@@ -73,6 +73,22 @@ interface OtherEventMap {
 const POLL_INTERVAL_RAPID   = 1 * MS;
 const POLL_TIMEOUT_MULTIPLE = 2;
 const POLL_TIMEOUT_OFFSET   = 10 * MS;
+const STATUS_EVENT_KEYS: StatusEventRX9[] = [
+    'connected',
+    'enabled',
+    'batteryStatus',
+    'dustbinStatus',
+    'firmwareVersion',
+    'robotStatus',
+    'messages',
+    'zoneStatus',
+    'ecoMode',
+    'powerMode',
+    'apiError',
+    'isDocked',
+    'isCharging',
+    'fauxStatus'
+];
 
 // An AEG RX 9 / Electrolux Pure i9 robot manager
 export class AEGApplianceRX9
@@ -283,8 +299,7 @@ export class AEGApplianceRX9
     // Apply updates to the robot status and emit events for changes
     emitChangeEvents(): void {
         // Identify the values that have changed
-        const keys = Object.keys(this.state) as StatusEventRX9[];
-        const changed = keys.filter(key => !isDeepStrictEqual(this.state[key], this.emittedState[key]));
+        const changed = STATUS_EVENT_KEYS.filter(key => this.hasStateChanged(key));
         if (!changed.length) return;
 
         // Log a summary of the changes
@@ -302,13 +317,33 @@ export class AEGApplianceRX9
         this.log.debug(formatList(summary));
 
         // Emit an event listing all of the keys that have changed
-        this.emit('changed', keys, this.state);
+        this.emit('changed', changed, this.state);
 
         // Emit events for each change
         changed.forEach(key => (this.emit as StatusEmit<typeof key>)(key, this.state[key], this.emittedState[key]));
 
-        // Store a copy of the updated values
-        this.emittedState = {...this.state};
+        // Store the updated values only for changed keys
+        for (const key of changed) {
+            this.setEmittedValue(key, this.state[key]);
+        }
+    }
+
+    // Detect whether a specific status field has changed
+    private hasStateChanged(key: StatusEventRX9): boolean {
+        const current = this.state[key];
+        const previous = this.emittedState[key];
+        switch (key) {
+        case 'messages':
+        case 'zoneStatus':
+            return !isDeepStrictEqual(current, previous);
+        default:
+            return current !== previous;
+        }
+    }
+
+    // Preserve key-value typing for Partial<DynamicStateRX9> updates
+    private setEmittedValue<K extends StatusEventRX9>(key: K, value: DynamicStateRX9[K]): void {
+        this.emittedState[key] = value;
     }
 
     // Emit events for any new messages

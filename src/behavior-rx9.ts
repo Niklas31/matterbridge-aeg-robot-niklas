@@ -154,35 +154,36 @@ export class RvcOperationalStateServerRX9 extends RvcOperationalStateBehavior {
 
     static {
         const schema = RvcOperationalStateServerRX9.schema;
-        if (!(schema instanceof ClusterModel)) return;
-        try {
-            // Add manufacturer-specific OperationalState values
-            extendEnum(schema, 'OperationalStateEnum', [
-                FieldElement({
-                    name:           'ManualSteering',
-                    id:             RvcOperationalStateRX9.ManualSteering,
-                    conformance:    'O',
-                    description:    'The device is being steered manually'
-                }),
-                FieldElement({
-                    name:           'FirmwareUpgrade',
-                    id:             RvcOperationalStateRX9.FirmwareUpgrade,
-                    conformance:    'O',
-                    description:    'The device firmware is being upgraded'
-                })
-            ]);
+        if (schema instanceof ClusterModel) {
+            try {
+                // Add manufacturer-specific OperationalState values
+                extendEnum(schema, 'OperationalStateEnum', [
+                    FieldElement({
+                        name:           'ManualSteering',
+                        id:             RvcOperationalStateRX9.ManualSteering,
+                        conformance:    'O',
+                        description:    'The device is being steered manually'
+                    }),
+                    FieldElement({
+                        name:           'FirmwareUpgrade',
+                        id:             RvcOperationalStateRX9.FirmwareUpgrade,
+                        conformance:    'O',
+                        description:    'The device firmware is being upgraded'
+                    })
+                ]);
 
-            // Add manufacturer-specific ErrorState values
-            extendEnum(schema, 'ErrorStateEnum', [
-                FieldElement({
-                    name:           'OtherError',
-                    id:             VENDOR_ERROR_RX9,
-                    conformance:    'O',
-                    description:    'The device has an error that is not covered by the Matter-defined error states'
-                })
-            ]);
-        } catch {
-            // Older/newer Matter.js schemas may not allow extension.
+                // Add manufacturer-specific ErrorState values
+                extendEnum(schema, 'ErrorStateEnum', [
+                    FieldElement({
+                        name:           'OtherError',
+                        id:             VENDOR_ERROR_RX9,
+                        conformance:    'O',
+                        description:    'The device has an error that is not covered by the Matter-defined error states'
+                    })
+                ]);
+            } catch {
+                // Older/newer Matter.js schemas may not allow extension.
+            }
         }
     }
 

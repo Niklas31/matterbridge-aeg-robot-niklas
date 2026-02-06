@@ -103,6 +103,14 @@ export abstract class AEGApplianceRX9Ctrl<Type extends number | string> {
         const description = this.description(target);
         this.log.info(`Attempting to ${description}`);
         try {
+            // Optimistically patch the state immediately so controllers can
+            // reflect an in-flight command before cloud confirmation arrives.
+            this.pending = {
+                target,
+                timeout: Date.now() + TIMEOUT_REQUEST_ACCEPTED + TIMEOUT_STATUS_CONFIRMED
+            };
+            this.appliance.updateDerivedAndEmit();
+
             // Apply the change
             const requestSignal = AbortSignal.any([signal, AbortSignal.timeout(TIMEOUT_REQUEST_ACCEPTED)]);
             await this.setTarget(target, requestSignal);
@@ -116,6 +124,7 @@ export abstract class AEGApplianceRX9Ctrl<Type extends number | string> {
         } catch (cause) {
             // Cancel any (previous) status override
             this.pending = undefined;
+            this.appliance.updateDerivedAndEmit();
 
             // Identify the underlying error
             let err = cause instanceof Error ? cause : new Error(String(cause));
@@ -150,7 +159,12 @@ export abstract class AEGApplianceRX9Ctrl<Type extends number | string> {
             this.pending = undefined;
         } else {
             // Patch the status with the predicted value
-            this.preEmitPatch(target);
+            try {
+                this.preEmitPatch(target);
+            } catch {
+                this.log.warn(`Failed to patch optimistic status for ${description}`);
+                this.pending = undefined;
+            }
         }
     }
 

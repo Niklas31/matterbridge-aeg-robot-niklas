@@ -89,7 +89,7 @@ export class PeriodicOp {
                 void this.restartWatchdog();
             } catch (err) {
                 if (err instanceof Error && err.name === 'AbortError') {
-                    this.log.debug(`${this.config.name} early wake`);
+                    continue;
                 } else {
                     logError(this.log, this.config.name, err);
                     this.lastError = err;

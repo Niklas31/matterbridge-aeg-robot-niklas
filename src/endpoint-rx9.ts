@@ -17,6 +17,7 @@ import {
     BasicInformation,
     PowerSource,
     RvcCleanMode,
+    RvcOperationalState,
     RvcRunMode,
     ServiceArea
 } from 'matterbridge/matter/clusters';
@@ -26,7 +27,6 @@ import {
     EndpointCommandsRX9,
     RvcCleanModeRX9,
     RvcCleanModeServerRX9,
-    RvcOperationalStateRX9,
     RvcOperationalStateServerRX9,
     RvcRunModeRX9,
     RvcRunModeServerRX9,
@@ -322,22 +322,22 @@ export class EndpointRX9 extends MatterbridgeEndpoint {
         }), {
             // Constant attributes
             operationalStateList: [{
-                operationalStateId:     RvcOperationalStateRX9.Stopped
+                operationalStateId:     RvcOperationalState.OperationalState.Stopped
             }, {
-                operationalStateId:     RvcOperationalStateRX9.Running
+                operationalStateId:     RvcOperationalState.OperationalState.Running
             }, {
-                operationalStateId:     RvcOperationalStateRX9.Paused
+                operationalStateId:     RvcOperationalState.OperationalState.Paused
             }, {
-                operationalStateId:     RvcOperationalStateRX9.Error
+                operationalStateId:     RvcOperationalState.OperationalState.Error
             }, {
-                operationalStateId:     RvcOperationalStateRX9.SeekingCharger
+                operationalStateId:     RvcOperationalState.OperationalState.SeekingCharger
             }, {
-                operationalStateId:     RvcOperationalStateRX9.Charging
+                operationalStateId:     RvcOperationalState.OperationalState.Charging
             }, {
-                operationalStateId:     RvcOperationalStateRX9.Docked
+                operationalStateId:     RvcOperationalState.OperationalState.Docked
             }],
             // Variable attributes (with dummy defaults)
-            operationalState:       RvcOperationalStateRX9.Stopped,
+            operationalState:       RvcOperationalState.OperationalState.Stopped,
             operationalError:       RvcOperationalStateError.toStruct(),
             // Unsupported attributes
             phaseList:              null,
