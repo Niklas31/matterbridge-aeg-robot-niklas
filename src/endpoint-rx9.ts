@@ -273,35 +273,7 @@ export class EndpointRX9 extends MatterbridgeEndpoint {
                     { value: tag.Max },
                     { value: tag.DeepClean }
                 ]
-            }, {
-                label:      'Quiet Spot Cleaning',
-                mode:       RvcCleanModeRX9.QuietSpot,
-                modeTags:   [
-                    { value: tag.Vacuum },
-                    { value: tag.Quick },
-                    { value: tag.Quiet },
-                    { value: tag.LowNoise },
-                    { value: tag.LowEnergy },
-                    { value: tag.Min }
-                ]
-            }, {
-                label:      'Smart Spot Cleaning',
-                mode:       RvcCleanModeRX9.SmartSpot,
-                modeTags:   [
-                    { value: tag.Vacuum },
-                    { value: tag.Quick },
-                    { value: tag.Auto }
-                ]
-            }, {
-                label:      'Power Spot Cleaning',
-                mode:       RvcCleanModeRX9.PowerSpot,
-                modeTags:   [
-                    { value: tag.Vacuum },
-                    { value: tag.Quick },
-                    { value: tag.Max },
-                    { value: tag.DeepClean }
-                ]
-            }].filter(mode => this.information.smartPowerCapable || mode.modeTags.some(t => t.value !== tag.Auto)),
+            }].filter(mode => this.information.smartPowerCapable || mode.mode !== RvcCleanModeRX9.Smart),
             // Variable attributes (with dummy defaults)
             currentMode:    RvcCleanModeRX9.Quiet
         });

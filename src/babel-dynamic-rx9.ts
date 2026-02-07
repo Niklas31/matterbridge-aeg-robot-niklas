@@ -74,10 +74,10 @@ const BATTERY_MAP: Record<RX9BatteryStatus, BatteryMap> = {
     [RX9BatteryStatus.FullyCharged]:    [100,   'Active',      'Ok',       'IsAtFullCharge']
 };
 
-const POWER_MAP: Record<RX92PowerMode, [keyof typeof RvcCleanModeRX9, keyof typeof RvcCleanModeRX9]> = {
-    [RX92PowerMode.Quiet]:      ['Quiet', 'QuietSpot'],
-    [RX92PowerMode.Smart]:      ['Smart', 'SmartSpot'],
-    [RX92PowerMode.Power]:      ['Power', 'PowerSpot']
+const POWER_MAP: Record<RX92PowerMode, keyof typeof RvcCleanModeRX9> = {
+    [RX92PowerMode.Quiet]:      'Quiet',
+    [RX92PowerMode.Smart]:      'Smart',
+    [RX92PowerMode.Power]:      'Power'
 };
 
 const STATUS_CURRENT = new Set<RX9CleaningSessionStatus>(['approaching', 'started']);
@@ -128,9 +128,11 @@ export const BABEL_DYNAMIC_RX9 = {
 
     // Type of cleaning and power level
     cleanMode: ({ fauxStatus, powerMode, ecoMode }: DynamicStateRX9): RvcCleanModeRX9 => {
-        const { isSpotClean } = mapStatus(fauxStatus);
+        void fauxStatus;
         powerMode ??= ecoMode === true ? RX92PowerMode.Quiet : RX92PowerMode.Power;
-        const cleanMode = POWER_MAP[powerMode][isSpotClean ? 1 : 0];
+        // Home should only expose the three Electrolux power levels.
+        // Spot/normal sessions share the same displayed level.
+        const cleanMode = POWER_MAP[powerMode];
         return RvcCleanModeRX9[cleanMode];
     },
 
