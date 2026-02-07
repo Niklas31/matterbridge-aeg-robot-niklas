@@ -10,7 +10,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 
 // Timeout waiting for changes, as a multiple of the status polling interval
 const TIMEOUT_REQUEST_ACCEPTED = 30 * MS; // 30 seconds to issue request
-const TIMEOUT_STATUS_CONFIRMED = 60 * MS; // 1 minute for the appliance to respond
+const TIMEOUT_STATUS_CONFIRMED = 180 * MS; // 3 minutes for the appliance to respond
 const STATUS_CONFIRMATION_POLL_INTERVAL = 1 * MS;
 const STATUS_STICKY_WINDOW = 8 * MS;
 
@@ -189,6 +189,7 @@ export abstract class AEGApplianceRX9Ctrl<Type extends number | string> {
                 this.sticky = { target, timeout: Date.now() + STATUS_STICKY_WINDOW };
             } else if (timeout < Date.now()) {
                 this.log.warn(`Timed out waiting for status to confirm ${description}`);
+                this.onStatusConfirmationTimeout(target);
                 this.pending = undefined;
             } else {
                 // Patch the status with the predicted value
@@ -231,6 +232,12 @@ export abstract class AEGApplianceRX9Ctrl<Type extends number | string> {
 
     // Override the status while a requested change is pending
     abstract preEmitPatch(target: Type): void;
+
+    // Optional hook for target-specific timeout handling.
+    // Default behavior is no-op.
+    protected onStatusConfirmationTimeout(_target: Type): void {
+        void _target;
+    }
 }
 
 function unwrapAbortError(cause: unknown): Error {

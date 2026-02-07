@@ -7,6 +7,7 @@ import { AEGApplianceRX9Ctrl } from './aeg-appliance-rx9-ctrl.js';
 import { formatList, formatMilliseconds, MS, plural } from './utils.js';
 import { setTimeout } from 'node:timers/promises';
 import { CC, RR } from './logger-options.js';
+import { logError } from './log-error.js';
 
 // Expected result of starting an activity (true = no-op, undefined = invalid)
 type StatusName = keyof typeof RX9RobotStatus
@@ -73,12 +74,16 @@ if (errors.length) throw new Error(`Inconsistent activity mapping tables:\n${err
 
 // Minimum interval between successive commands
 const COMMAND_INTERVAL = 5 * MS; // 5 seconds
+const CUSTOMPLAY_RETRY_DELAY = 20 * MS; // wait one poll cycle before retrying
+const CUSTOMPLAY_RETRY_REQUEST_TIMEOUT = 20 * MS;
 
 // Robot controller for changing the activity
 export class AEGApplianceRX9CtrlActivity extends AEGApplianceRX9Ctrl<ActivityRX9> {
 
     // Time of the last successful command response
     private lastCommandTime = 0;
+    private cleanPendingViaCustomPlay = false;
+    private customPlayRetrySequence = 0;
 
     // Create a new robot controller for changing the name
     constructor(readonly appliance: AEGApplianceRX9) {
@@ -88,12 +93,19 @@ export class AEGApplianceRX9CtrlActivity extends AEGApplianceRX9Ctrl<ActivityRX9
     // Check whether the robot is (or can) perform the required activity
     override isTargetSet(target: ActivityRX9): boolean | undefined {
         const fauxStatus = this.mapLookup(FAUX_STATUS_MAP, target);
-        return typeof fauxStatus === 'string' ? false : fauxStatus;
+        const isTargetSet = typeof fauxStatus === 'string' ? false : fauxStatus;
+        if (target === 'Clean' && isTargetSet === true) {
+            this.cleanPendingViaCustomPlay = false;
+        }
+        return isTargetSet;
     }
 
     // Attempt to set the requested state
     override async setTarget(target: ActivityRX9, signal?: AbortSignal): Promise<void> {
         const description = this.description(target);
+        if (target !== 'Clean') {
+            this.cleanPendingViaCustomPlay = false;
+        }
 
         // Lookup the appropriate commands for the current state
         const commands = this.mapLookup(CLEANING_COMMAND_MAP, target);
@@ -112,10 +124,16 @@ export class AEGApplianceRX9CtrlActivity extends AEGApplianceRX9Ctrl<ActivityRX9
 
             // Send the next command, selecting 'CustomPlay' instead of 'Play' if appropriate
             if (command === 'play' && this.appliance.customPlay) {
-                const { persistentMapId, zones } = this.appliance.customPlay;
+                const customPlay = this.appliance.customPlay;
+                const { persistentMapId, zones } = customPlay;
+                this.cleanPendingViaCustomPlay = target === 'Clean';
+                const retrySequence = ++this.customPlayRetrySequence;
                 this.log.info(`Using ${CC}CustomPlay${RR} command for zone cleaning`);
                 await this.api.sendCustomPlayCommand(persistentMapId, zones, signal);
+                void this.retryCustomPlayIfNeeded(target, retrySequence, customPlay);
             } else {
+                // Cancel any pending retry from a previous CustomPlay request.
+                this.customPlayRetrySequence++;
                 await this.api.sendCleaningCommand(command, signal);
             }
             this.lastCommandTime = Date.now();
@@ -138,11 +156,41 @@ export class AEGApplianceRX9CtrlActivity extends AEGApplianceRX9Ctrl<ActivityRX9
         }
     }
 
+    override onStatusConfirmationTimeout(target: ActivityRX9): void {
+        if (target !== 'Clean' || !this.cleanPendingViaCustomPlay) return;
+        this.cleanPendingViaCustomPlay = false;
+        this.log.warn(
+            'CustomPlay command was accepted but cleaning was not confirmed before timeout;'
+            + ' the robot may have ignored the zone start request'
+        );
+    }
+
     // Convert an activity name to a column index
     mapLookup<T>(map: Record<StatusName, T[]>, target: ActivityRX9): T | undefined {
         const { robotStatus } = this.appliance.state;
         const row = RX9RobotStatus[robotStatus] as keyof typeof RX9RobotStatus;
         const column = ACTIVITY.indexOf(target);
         return map[row][column];
+    }
+
+    private async retryCustomPlayIfNeeded(
+        target: ActivityRX9,
+        retrySequence: number,
+        customPlay: NonNullable<AEGApplianceRX9['customPlay']>
+    ): Promise<void> {
+        if (target !== 'Clean') return;
+        await setTimeout(CUSTOMPLAY_RETRY_DELAY);
+        if (retrySequence !== this.customPlayRetrySequence) return;
+        if (this.isTargetSet('Clean') === true) return;
+
+        this.log.warn(`CustomPlay not confirmed after ${formatMilliseconds(CUSTOMPLAY_RETRY_DELAY, 1)}; retrying once`);
+        try {
+            const retrySignal = AbortSignal.timeout(CUSTOMPLAY_RETRY_REQUEST_TIMEOUT);
+            await this.api.sendCustomPlayCommand(customPlay.persistentMapId, customPlay.zones, retrySignal);
+            this.log.info('CustomPlay retry request accepted');
+        } catch (err) {
+            this.cleanPendingViaCustomPlay = false;
+            logError(this.log, 'CustomPlay retry', err);
+        }
     }
 }
