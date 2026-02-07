@@ -269,10 +269,7 @@ export class EndpointRX9 extends MatterbridgeEndpoint {
             mode:       RvcCleanModeRX9.Quiet,
             modeTags:   [
                 { value: tag.Vacuum },
-                { value: tag.Quiet },
-                { value: tag.LowNoise },
-                { value: tag.LowEnergy },
-                { value: tag.Min }
+                { value: tag.Quiet }
             ]
         }, {
             label:      'Smart Cleaning',
@@ -286,8 +283,7 @@ export class EndpointRX9 extends MatterbridgeEndpoint {
             mode:       RvcCleanModeRX9.Power,
             modeTags:   [
                 { value: tag.Vacuum },
-                { value: tag.Max },
-                { value: tag.DeepClean }
+                { value: tag.Max }
             ]
         }].filter(mode => this.information.smartPowerCapable || mode.mode !== RvcCleanModeRX9.Smart);
     }
