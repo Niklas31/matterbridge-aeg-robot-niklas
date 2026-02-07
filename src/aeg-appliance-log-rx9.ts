@@ -60,6 +60,8 @@ const powerModeNames: Record<RX92PowerMode, { value: string, extra: string }> = 
     [RX92PowerMode.Smart]:  { value: 'SMART',   extra: 'cleans quietly on hard surfaces, uses full power on carpets' },
     [RX92PowerMode.Power]:  { value: 'POWER',   extra: 'optimal cleaning performance, higher energy consumption' }
 };
+const MAP_LOG_MIN_INTERVAL = 30 * MS;
+const MAP_LOG_LINE_LIMIT = 120;
 
 // Logging of information about a robot
 export class AEGApplianceRX9Log {
@@ -69,6 +71,7 @@ export class AEGApplianceRX9Log {
 
     // Reported error messages
     private readonly loggedHealthErrors = new Set<string>();
+    private lastMapLogTimestamp = 0;
 
     // Construct a robot logger
     constructor(readonly appliance: AEGApplianceRX9) {
@@ -156,11 +159,22 @@ export class AEGApplianceRX9Log {
     logMaps(): void {
         this.appliance.on('map', (mapData, mapDataExtra) => {
             const { logMapStyle } = this.appliance.config;
-            if (logMapStyle !== 'Off') {
-                const mapStyle = logMapStyle === 'Matterbridge'
-                    ? MAP_CONFIG_MATTERBRIDGE : MAP_CONFIG_MONOSPACED;
-                const mapText = aegRobotMap(mapStyle, mapData, mapDataExtra);
-                for (const line of mapText) this.log.info(line);
+            if (logMapStyle === 'Off') return;
+            const now = Date.now();
+            if (now - this.lastMapLogTimestamp < MAP_LOG_MIN_INTERVAL) return;
+            this.lastMapLogTimestamp = now;
+
+            const mapStyle = logMapStyle === 'Matterbridge'
+                ? MAP_CONFIG_MATTERBRIDGE : MAP_CONFIG_MONOSPACED;
+            const mapText = aegRobotMap(mapStyle, mapData, mapDataExtra);
+            const fullMapLogging = this.appliance.config.debugFeatures.includes('Log Endpoint Debug');
+            const maxLines = fullMapLogging ? mapText.length : MAP_LOG_LINE_LIMIT;
+            mapText.slice(0, maxLines).forEach(line => {
+                this.log.info(line);
+            });
+            if (mapText.length > maxLines) {
+                this.log.info(`${RT}[Map output truncated: ${maxLines}/${mapText.length} lines.`);
+                this.log.info(`${RT}Enable 'Log Endpoint Debug' for full map logs.]${RR}`);
             }
         });
     }

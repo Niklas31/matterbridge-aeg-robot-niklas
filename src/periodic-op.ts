@@ -8,8 +8,8 @@ import { logError } from './log-error.js';
 // Configuration of a periodic operation
 export interface PeriodicOpConfig {
     name:           string;
-    interval:       number;
-    intervalRapid:  number;
+    interval:       number | (() => number);
+    intervalRapid:  number | (() => number);
     timeout:        number;
     onOp:           () => Promise<void>;
     onError?:       (err?: unknown) => void;
@@ -67,7 +67,10 @@ export class PeriodicOp {
     // Time until the next operation
     get timeUntilNextOp(): number {
         const now = Date.now();
-        const interval = this.config[now < this.rapidUntil ? 'intervalRapid' : 'interval'];
+        const configInterval = this.config[now < this.rapidUntil ? 'intervalRapid' : 'interval'];
+        const interval = typeof configInterval === 'function'
+            ? configInterval()
+            : configInterval;
         return Math.max(0, this.lastOpTime + interval - now);
     }
 

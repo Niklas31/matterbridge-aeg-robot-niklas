@@ -12,6 +12,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 const TIMEOUT_REQUEST_ACCEPTED = 30 * MS; // 30 seconds to issue request
 const TIMEOUT_STATUS_CONFIRMED = 60 * MS; // 1 minute for the appliance to respond
 const STATUS_CONFIRMATION_POLL_INTERVAL = 1 * MS;
+const STATUS_STICKY_WINDOW = 8 * MS;
 
 // An abstract AEG RX 9 / Electrolux Pure i9 robot controller
 export abstract class AEGApplianceRX9Ctrl<Type extends number | string> {
@@ -32,6 +33,11 @@ export abstract class AEGApplianceRX9Ctrl<Type extends number | string> {
 
     // Override of status with prediction after successful request
     private pending?: {
+        target:             Type;
+        timeout:            number;
+    };
+
+    private sticky?: {
         target:             Type;
         timeout:            number;
     };
@@ -105,6 +111,7 @@ export abstract class AEGApplianceRX9Ctrl<Type extends number | string> {
         const description = this.description(target);
         this.log.info(`Attempting to ${description}`);
         try {
+            this.sticky = undefined;
             // Optimistically patch the state immediately so controllers can
             // reflect an in-flight command before cloud confirmation arrives.
             this.pending = {
@@ -141,6 +148,7 @@ export abstract class AEGApplianceRX9Ctrl<Type extends number | string> {
         } catch (cause) {
             // Cancel any (previous) status override
             this.pending = undefined;
+            this.sticky = undefined;
             this.appliance.updateDerivedAndEmit();
 
             // Identify the underlying error
@@ -170,25 +178,42 @@ export abstract class AEGApplianceRX9Ctrl<Type extends number | string> {
 
     // Override the status while a requested change is pending
     pendingCheckAndPatch(): void {
-        if (!this.pending) return;
-        const { target, timeout } = this.pending;
-        const description = this.description(target);
+        if (this.pending) {
+            const { target, timeout } = this.pending;
+            const description = this.description(target);
 
-        // Check whether the target state has been reached
-        if (this.isTargetSet(target)) {
-            this.log.info(`Status confirmed ${description}`);
-            this.pending = undefined;
-        } else if (timeout < Date.now()) {
-            this.log.warn(`Timed out waiting for status to confirm ${description}`);
-            this.pending = undefined;
-        } else {
-            // Patch the status with the predicted value
-            try {
-                this.preEmitPatch(target);
-            } catch {
-                this.log.warn(`Failed to patch optimistic status for ${description}`);
+            // Check whether the target state has been reached
+            if (this.isTargetSet(target)) {
+                this.log.info(`Status confirmed ${description}`);
                 this.pending = undefined;
+                this.sticky = { target, timeout: Date.now() + STATUS_STICKY_WINDOW };
+            } else if (timeout < Date.now()) {
+                this.log.warn(`Timed out waiting for status to confirm ${description}`);
+                this.pending = undefined;
+            } else {
+                // Patch the status with the predicted value
+                try {
+                    this.preEmitPatch(target);
+                } catch {
+                    this.log.warn(`Failed to patch optimistic status for ${description}`);
+                    this.pending = undefined;
+                }
             }
+            return;
+        }
+
+        // Short sticky window after confirmation to absorb brief stale snapshots.
+        if (!this.sticky) return;
+        const { target, timeout } = this.sticky;
+        if (timeout < Date.now()) {
+            this.sticky = undefined;
+            return;
+        }
+        if (this.isTargetSet(target)) return;
+        try {
+            this.preEmitPatch(target);
+        } catch {
+            this.sticky = undefined;
         }
     }
 

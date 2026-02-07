@@ -34,7 +34,7 @@ export const DEFAULT_CONFIG: Partial<Config> = {
     blackList:              [],
     pollIntervalSeconds:    30, // 2880 calls/day per robot vacuum cleaner
     enableServerRvc:        true,
-    logMapStyle:            'Matterbridge',
+    logMapStyle:            'Off',
     debug:                  false,
     debugFeatures:          [],
     unregisterOnShutdown:   false

@@ -66,7 +66,7 @@
                     "title": "Optimised for Matterbridge frontend"
                 }
             ],
-            "default": "Matterbridge"
+            "default": "Off"
         },
         "whiteList": {
             "description": "Only expose robot vacuum devices listed here, identified by their serial number. Leave empty to expose all devices.",

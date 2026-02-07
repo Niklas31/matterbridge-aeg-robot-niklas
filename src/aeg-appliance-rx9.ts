@@ -29,7 +29,6 @@ import {
     AEGApplianceRX9CtrlActivity
 } from './aeg-appliance-rx9-ctrl-activity.js';
 import { logError } from './log-error.js';
-import { isDeepStrictEqual } from 'util';
 import { MapDataExtra } from './aeg-map.js';
 
 // Dynamic information about a robot
@@ -73,6 +72,10 @@ interface OtherEventMap {
 const POLL_INTERVAL_RAPID   = 1 * MS;
 const POLL_TIMEOUT_MULTIPLE = 2;
 const POLL_TIMEOUT_OFFSET   = 10 * MS;
+const POLL_INTERVAL_FAST_DIVISOR = 2;
+const POLL_INTERVAL_FAST_MIN = 10 * MS;
+const POLL_INTERVAL_SLOW_MULTIPLE = 2;
+const POLL_INTERVAL_SLOW_MAX = 180 * MS;
 const STATUS_EVENT_KEYS: StatusEventRX9[] = [
     'connected',
     'enabled',
@@ -89,6 +92,17 @@ const STATUS_EVENT_KEYS: StatusEventRX9[] = [
     'isCharging',
     'fauxStatus'
 ];
+const ACTIVE_POLL_STATUSES = new Set<RX9RobotStatus>([
+    RX9RobotStatus.Cleaning,
+    RX9RobotStatus.PausedCleaning,
+    RX9RobotStatus.SpotCleaning,
+    RX9RobotStatus.PausedSpotCleaning,
+    RX9RobotStatus.Return,
+    RX9RobotStatus.PausedReturn,
+    RX9RobotStatus.ReturnForPitstop,
+    RX9RobotStatus.PausedReturnForPitstop,
+    RX9RobotStatus.ManualSteering
+]);
 
 // An AEG RX 9 / Electrolux Pure i9 robot manager
 export class AEGApplianceRX9
@@ -136,6 +150,10 @@ export class AEGApplianceRX9
     private emittedState: Partial<DynamicStateRX9> = {};
     private readonly emittedMessages    = new Set<number>();
     private readonly emittedMaps        = new Set<number>();
+    private emittedMessagesSignature = '';
+    private emittedZoneStatusSignature = '';
+    private currentMessagesSignature = '';
+    private currentZoneStatusSignature = '';
 
     // Periodic API polling
     poll?: PeriodicOp;
@@ -194,7 +212,7 @@ export class AEGApplianceRX9
         // Start polling the status
         this.poll = new PeriodicOp(this.log, {
             name:           'Appliance state',
-            interval:       this.config.pollIntervalSeconds * MS,
+            interval:       this.getAdaptivePollInterval.bind(this),
             intervalRapid:  POLL_INTERVAL_RAPID,
             timeout:        this.config.pollIntervalSeconds * MS * POLL_TIMEOUT_MULTIPLE + POLL_TIMEOUT_OFFSET,
             onOp:           this.pollApplianceState.bind(this),
@@ -294,6 +312,12 @@ export class AEGApplianceRX9
     // Apply a partial update to the robot status
     updateStatus(update: Partial<DynamicStateRX9>): void {
         Object.assign(this.state, update);
+        if (update.messages !== undefined) {
+            this.currentMessagesSignature = this.messagesSignature(update.messages);
+        }
+        if (update.zoneStatus !== undefined) {
+            this.currentZoneStatusSignature = this.zoneStatusSignature(update.zoneStatus);
+        }
     }
 
     // Apply updates to the robot status and emit events for changes
@@ -334,8 +358,9 @@ export class AEGApplianceRX9
         const previous = this.emittedState[key];
         switch (key) {
         case 'messages':
+            return this.currentMessagesSignature !== this.emittedMessagesSignature;
         case 'zoneStatus':
-            return !isDeepStrictEqual(current, previous);
+            return this.currentZoneStatusSignature !== this.emittedZoneStatusSignature;
         default:
             return current !== previous;
         }
@@ -344,6 +369,43 @@ export class AEGApplianceRX9
     // Preserve key-value typing for Partial<DynamicStateRX9> updates
     private setEmittedValue<K extends StatusEventRX9>(key: K, value: DynamicStateRX9[K]): void {
         this.emittedState[key] = value;
+        if (key === 'messages') {
+            this.emittedMessagesSignature = this.currentMessagesSignature;
+        } else if (key === 'zoneStatus') {
+            this.emittedZoneStatusSignature = this.currentZoneStatusSignature;
+        }
+    }
+
+    // Adaptive polling: poll faster while cleaning/moving and slower while docked/idle.
+    private getAdaptivePollInterval(): number {
+        const base = this.config.pollIntervalSeconds * MS;
+        const { fauxStatus, isDocked } = this.state;
+        if (ACTIVE_POLL_STATUSES.has(fauxStatus)) {
+            return Math.max(POLL_INTERVAL_FAST_MIN, Math.floor(base / POLL_INTERVAL_FAST_DIVISOR));
+        }
+        if (isDocked && (
+            fauxStatus === RX9RobotStatus.Sleeping ||
+            fauxStatus === RX9RobotStatus.Charging ||
+            fauxStatus === RX9RobotStatus.Pitstop
+        )) {
+            return Math.min(POLL_INTERVAL_SLOW_MAX, base * POLL_INTERVAL_SLOW_MULTIPLE);
+        }
+        return base;
+    }
+
+    // Compact signatures avoid deep-equality checks in the hot polling path.
+    private messagesSignature(messages: RX9Message[]): string {
+        if (!messages.length) return '';
+        return messages.map(({ id, timestamp, type, userErrorId, internalErrorId }) =>
+            `${id}:${timestamp}:${type}:${userErrorId ?? ''}:${internalErrorId ?? ''}`
+        ).join('|');
+    }
+
+    private zoneStatusSignature(zoneStatus: RX9CleaningSessionZoneStatus[]): string {
+        if (!zoneStatus.length) return '';
+        return zoneStatus.map(({ id, status, powerMode }) =>
+            `${id}:${status}:${powerMode}`
+        ).join('|');
     }
 
     // Emit events for any new messages

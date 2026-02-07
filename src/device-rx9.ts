@@ -42,6 +42,7 @@ export class DeviceRX9 extends EndpointRX9 {
     private lastIsActive = false;
     private startActive = 0;
     private lastOperationalError = RvcOperationalStateError.toStruct();
+    private readonly attributeFingerprints = new Map<string, string>();
 
     // Construct a new endpoint
     constructor(
@@ -151,10 +152,10 @@ export class DeviceRX9 extends EndpointRX9 {
                              + ` ${AV}${PowerSource.BatChargeState[batChargeState]}${RR} (${AV}${batChargeState}${RR})`;
             this.log.info(logMessage);
             await Promise.all([
-                this.updateAttribute(clusterId, 'status',              status,              this.log),
-                this.updateAttribute(clusterId, 'batPercentRemaining', batPercentRemaining, this.log),
-                this.updateAttribute(clusterId, 'batChargeLevel',      batChargeLevel,      this.log),
-                this.updateAttribute(clusterId, 'batChargeState',      batChargeState,      this.log)
+                this.updateAttributeIfChanged(clusterId, 'status',              status),
+                this.updateAttributeIfChanged(clusterId, 'batPercentRemaining', batPercentRemaining),
+                this.updateAttributeIfChanged(clusterId, 'batChargeLevel',      batChargeLevel),
+                this.updateAttributeIfChanged(clusterId, 'batChargeState',      batChargeState)
             ]);
         });
     }
@@ -164,7 +165,7 @@ export class DeviceRX9 extends EndpointRX9 {
         this.babel.on('runMode', async runMode => {
             const clusterId = RvcRunMode.Cluster.id;
             this.log.info(`${AN}RVC Run Mode${RR}: ${AV}${RvcRunModeRX9[runMode]}${RR} (${AV}${runMode}${RR})`);
-            await this.updateAttribute(clusterId, 'currentMode', runMode, this.log);
+            await this.updateAttributeIfChanged(clusterId, 'currentMode', runMode);
         });
     }
 
@@ -173,7 +174,7 @@ export class DeviceRX9 extends EndpointRX9 {
         this.babel.on('cleanMode', async cleanMode => {
             const clusterId = RvcCleanMode.Cluster.id;
             this.log.info(`${AN}RVC Clean Mode${RR}: ${AV}${RvcCleanModeRX9[cleanMode]}${RR} (${AV}${cleanMode}${RR})`);
-            await this.updateAttribute(clusterId, 'currentMode', cleanMode, this.log);
+            await this.updateAttributeIfChanged(clusterId, 'currentMode', cleanMode);
         });
     }
 
@@ -184,8 +185,8 @@ export class DeviceRX9 extends EndpointRX9 {
             this.log.info(`${AN}RVC Operational State${RR}: ${AV}${RvcOperationalStateRX9[operationalState]}${RR}`
                         + ` (${AV}${operationalState}${RR})`);
             await Promise.all([
-                this.updateAttribute(clusterId, 'operationalState', operationalState, this.log),
-                this.updateAttribute(clusterId, 'operationalError', operationalError, this.log)
+                this.updateAttributeIfChanged(clusterId, 'operationalState', operationalState),
+                this.updateAttributeIfChanged(clusterId, 'operationalError', operationalError)
             ]);
 
             // Trigger OperationCompletion event when changing from active to idle
@@ -241,9 +242,64 @@ export class DeviceRX9 extends EndpointRX9 {
                 `${AV}${areaName(areaId)}${RR}: ${AV}${ServiceArea.OperationalStatus[status]}${RR} (${AV}${status}${RR})`);
             this.log.info(`${AN}Service Area${RR}: ${AV}${areaName(currentArea)}${RR} [${progressStatus.join(', ')}]`);
             await Promise.all([
-                this.updateAttribute(clusterId, 'currentArea', currentArea, this.log),
-                this.updateAttribute(clusterId, 'progress',    progress,    this.log)
+                this.updateAttributeIfChanged(clusterId, 'currentArea', currentArea),
+                this.updateAttributeIfChanged(clusterId, 'progress',    progress)
             ]);
         });
+    }
+
+    // Skip redundant writes to reduce endpoint transaction pressure.
+    private async updateAttributeIfChanged(
+        clusterId: Parameters<EndpointRX9['updateAttribute']>[0],
+        attribute: string,
+        value: Parameters<EndpointRX9['updateAttribute']>[2]
+    ): Promise<void> {
+        const key = `${this.normalizeClusterId(clusterId)}:${attribute}`;
+        const nextFingerprint = this.fingerprintValue(value);
+        if (this.attributeFingerprints.get(key) === nextFingerprint) return;
+        await this.updateAttribute(clusterId, attribute, value, this.log);
+        this.attributeFingerprints.set(key, nextFingerprint);
+    }
+
+    private fingerprintValue(value: unknown): string {
+        if (value === null) return 'null';
+        switch (typeof value) {
+        case 'undefined': return 'undefined';
+        case 'number':    return Number.isNaN(value) ? 'number:NaN' : `number:${value}`;
+        case 'boolean':   return `boolean:${value}`;
+        case 'string':    return `string:${value}`;
+        case 'symbol':    return `symbol:${value.description ?? ''}`;
+        case 'function':  return 'function';
+        case 'object':
+            try {
+                return `json:${JSON.stringify(value)}`;
+            } catch {
+                return `object:${Object.prototype.toString.call(value)}`;
+            }
+        default:
+            return 'unknown';
+        }
+    }
+
+    private normalizeClusterId(clusterId: Parameters<EndpointRX9['updateAttribute']>[0]): string {
+        switch (typeof clusterId) {
+        case 'string':
+        case 'number':
+        case 'bigint':
+        case 'boolean':
+            return String(clusterId);
+        case 'object':
+            if ('id' in clusterId) {
+                const id = (clusterId as { id?: unknown }).id;
+                if (typeof id === 'number') return `id:${id}`;
+            }
+            if ('name' in clusterId) {
+                const name = (clusterId as { name?: unknown }).name;
+                if (typeof name === 'string') return `name:${name}`;
+            }
+            return `object:${Object.prototype.toString.call(clusterId)}`;
+        default:
+            return typeof clusterId;
+        }
     }
 }
